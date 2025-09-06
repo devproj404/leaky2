@@ -8,6 +8,7 @@ import { ExternalImage } from "@/components/external-image"
 import { ReportDeadLinkButton } from "@/components/report-dead-link-button"
 import { AdSlotComponent } from "@/components/ad-slot"
 import { PreviewGallery } from "./page-client"
+import { createClient } from "@supabase/supabase-js"
 
 export default async function ContentPage({ params }: { params: Promise<{ category: string; slug: string }> }) {
   // Await params before using its properties
@@ -23,50 +24,91 @@ export default async function ContentPage({ params }: { params: Promise<{ catego
     notFound()
   }
 
-  // Fetch content detail from cached API
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
-  
-  // Get content detail with previous/next content
-  const contentResponse = await fetch(`${baseUrl}/api/content/detail/${categorySlug}/${contentSlug}`, {
-    method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
-    next: { revalidate: 900 } // 15 minutes
-  })
+  // Create admin client that doesn't use cookies
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  )
 
-  if (!contentResponse.ok) {
+  // Get content detail with admin client
+  const { data: content, error: contentError } = await supabaseAdmin
+    .from("content")
+    .select(`
+      *,
+      category:categories(name, slug)
+    `)
+    .eq("slug", contentSlug)
+    .eq("is_published", true)
+    .single()
+
+  if (contentError || !content) {
     notFound()
   }
 
-  const contentData = await contentResponse.json()
-  
-  if (contentData.error || !contentData.content) {
+  // Verify the category matches
+  if (content.category?.slug !== categorySlug) {
     notFound()
   }
 
-  const content = contentData.content
-  const previousContent = contentData.previousContent
-  const nextContent = contentData.nextContent
+  // Get previous content
+  const { data: previousContent } = await supabaseAdmin
+    .from("content")
+    .select(`
+      id, title, slug, image_url,
+      category:categories(slug)
+    `)
+    .eq("category_id", content.category_id)
+    .eq("is_published", true)
+    .lt("created_at", content.created_at)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single()
+
+  // Get next content
+  const { data: nextContent } = await supabaseAdmin
+    .from("content")
+    .select(`
+      id, title, slug, image_url,
+      category:categories(slug)
+    `)
+    .eq("category_id", content.category_id)
+    .eq("is_published", true)
+    .gt("created_at", content.created_at)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .single()
 
   // Increment view count (keep this as server action)
   await incrementViews(content.id)
 
-  // Get sidebar data from cached API
-  const sidebarResponse = await fetch(`${baseUrl}/api/content/sidebar?popular_limit=6&products_limit=3&categories_limit=10`, {
-    method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
-    next: { revalidate: 900 } // 15 minutes
-  })
+  // Get sidebar data directly with admin client
+  const { data: popularContent = [] } = await supabaseAdmin
+    .from("content")
+    .select(`
+      id, title, slug, image_url, views,
+      category:categories(name, slug)
+    `)
+    .eq("is_published", true)
+    .order("views", { ascending: false })
+    .limit(6)
 
-  let popularContent = []
-  let products = []
-  let categories = []
-  
-  if (sidebarResponse.ok) {
-    const sidebarData = await sidebarResponse.json()
-    popularContent = sidebarData.popular_content || []
-    products = sidebarData.products || []
-    categories = sidebarData.categories || []
-  }
+  const { data: products = [] } = await supabaseAdmin
+    .from("products")
+    .select("*")
+    .eq("is_published", true)
+    .limit(3)
+
+  const { data: categories = [] } = await supabaseAdmin
+    .from("categories")
+    .select("*")
+    .order("name")
+    .limit(10)
 
   // Function to render star rating
   const renderStarRating = (rating: number) => {
