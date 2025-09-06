@@ -1,9 +1,9 @@
 import { Redis } from '@upstash/redis'
 
-// Initialize Redis client with environment variables
+// Initialize Redis client with environment variables (optional for build-time)
 const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+  url: process.env.UPSTASH_REDIS_REST_URL || '',
+  token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
 })
 
 // Cache TTL constants (in seconds)
@@ -23,6 +23,11 @@ export async function getCached<T>(
   ttl: number = CACHE_TTL.SHORT
 ): Promise<T> {
   try {
+    // Skip cache if Redis is not configured
+    if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+      return await fetchFn()
+    }
+    
     // Try to get data from cache
     const cached = await redis.get(key)
     
@@ -52,6 +57,10 @@ export async function getCachedBatch<T>(
   }>
 ): Promise<T[]> {
   try {
+    // Skip cache if Redis is not configured
+    if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+      return Promise.all(requests.map(req => req.fetchFn()))
+    }
     // Get all keys at once
     const keys = requests.map(r => r.key)
     const cached = await redis.mget<T[]>(...keys)
@@ -113,6 +122,11 @@ export async function getCachedBatch<T>(
 // Delete cache entries
 export async function deleteCache(key: string): Promise<void> {
   try {
+    // Skip if Redis is not configured
+    if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+      return
+    }
+    
     await redis.del(key)
     console.log(`Cache DELETED for key: ${key}`)
   } catch (error) {
@@ -123,6 +137,11 @@ export async function deleteCache(key: string): Promise<void> {
 // Delete multiple cache entries by pattern
 export async function deleteCachePattern(pattern: string): Promise<void> {
   try {
+    // Skip if Redis is not configured
+    if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+      return
+    }
+    
     // Note: This is a simple implementation. For production, you might want to use SCAN
     const keys = await redis.keys(pattern)
     if (keys.length > 0) {
@@ -164,6 +183,11 @@ export const cacheKeys = {
 // Helper to check Redis connection
 export async function testRedisConnection(): Promise<boolean> {
   try {
+    // Skip if Redis is not configured
+    if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+      return false
+    }
+    
     const result = await redis.ping()
     console.log('Redis connection test:', result)
     return result === 'PONG'

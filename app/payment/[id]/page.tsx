@@ -2,15 +2,18 @@ import { createClient } from "@supabase/supabase-js"
 import { redirect } from "next/navigation"
 import { CryptoPayment } from "@/components/crypto-payment"
 
-// Create a direct Supabase client with admin privileges for server operations
-const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-})
-
 export default async function PaymentPage({ params }: { params: { id: string } }) {
+  // Create Supabase client inside the function to avoid build-time initialization
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  )
   const { id } = params
 
   if (!id) {
