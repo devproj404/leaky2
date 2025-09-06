@@ -1,31 +1,16 @@
 import type { Metadata } from "next"
 import { CategoriesSection } from "@/components/categories-section"
+import { getCategoriesWithCounts } from "@/lib/category-service"
 
 export const metadata: Metadata = {
   title: "All Categories",
   description: "Browse all content categories",
 }
 
-// Fetch categories from cached API
+// Fetch categories using the service directly for build-time compatibility
 async function getCategories() {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
-    const response = await fetch(`${baseUrl}/api/categories/with-counts`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      // Enable caching for build time
-      next: { revalidate: 1800 } // 30 minutes
-    })
-
-    if (!response.ok) {
-      console.error('Failed to fetch categories:', response.statusText)
-      return []
-    }
-
-    const data = await response.json()
-    return data.categories || []
+    return await getCategoriesWithCounts()
   } catch (error) {
     console.error('Error fetching categories:', error)
     return []

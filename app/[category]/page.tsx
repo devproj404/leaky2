@@ -4,6 +4,7 @@ import { ContentCard } from "@/components/content-card"
 import { CategoryFilters } from "@/components/category-filters"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight } from "lucide-react"
+import { getCategory, getCategoryContent, getCategoryContentCount } from "@/lib/content-service"
 
 // Define static routes that should never be handled by this dynamic route
 const STATIC_ROUTES = ["shop", "premium", "settings", "orders", "search", "admin", "favicon.ico"]
@@ -36,32 +37,16 @@ export default async function CategoryPage({
     const currentPage = parseInt(resolvedSearchParams.page || "1", 10)
     const pageSize = 20
 
-    // Fetch category data and content from cached API
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
-    const apiUrl = `${baseUrl}/api/categories/${categorySlug}?filter=${activeFilter}&page=${currentPage}&limit=${pageSize}`
+    // Fetch category data and content using services for build-time compatibility
+    const category = await getCategory(categorySlug)
     
-    const response = await fetch(apiUrl, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-      // Enable caching for build time
-      next: { revalidate: 300 } // 5 minutes
-    })
-
-    if (!response.ok) {
-      console.log(`Category API failed for slug: ${categorySlug} (${response.status})`)
-      return notFound()
-    }
-
-    const data = await response.json()
-    
-    if (data.error || !data.category) {
+    if (!category) {
       console.log(`Category not found for slug: ${categorySlug}`)
       return notFound()
     }
 
-    const category = data.category
-    const categoryContent = data.content
-    const totalItems = data.total_items
+    const categoryContent = await getCategoryContent(categorySlug, activeFilter, currentPage, pageSize)
+    const totalItems = await getCategoryContentCount(categorySlug, activeFilter)
     const totalPages = Math.ceil(totalItems / pageSize)
     const hasNextPage = currentPage < totalPages
     const hasPrevPage = currentPage > 1
