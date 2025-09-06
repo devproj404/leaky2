@@ -4,7 +4,7 @@ import { ContentCard } from "@/components/content-card"
 import { CategoryFilters } from "@/components/category-filters"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { getCategory, getCategoryContent, getCategoryContentCount } from "@/lib/content-service"
+import { createClient } from "@supabase/supabase-js"
 
 // Define static routes that should never be handled by this dynamic route
 const STATIC_ROUTES = ["shop", "premium", "settings", "orders", "search", "admin", "favicon.ico"]
@@ -37,17 +37,70 @@ export default async function CategoryPage({
     const currentPage = parseInt(resolvedSearchParams.page || "1", 10)
     const pageSize = 20
 
-    // Fetch category data and content using services for build-time compatibility
-    const category = await getCategory(categorySlug)
+    // Create admin client that doesn't use cookies
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    )
+
+    // Get the category
+    const { data: category, error: categoryError } = await supabaseAdmin
+      .from("categories")
+      .select("*")
+      .eq("slug", categorySlug)
+      .single()
     
-    if (!category) {
+    if (categoryError || !category) {
       console.log(`Category not found for slug: ${categorySlug}`)
       return notFound()
     }
 
-    const categoryContent = await getCategoryContent(categorySlug, activeFilter, currentPage, pageSize)
-    const totalItems = await getCategoryContentCount(categorySlug, activeFilter)
-    const totalPages = Math.ceil(totalItems / pageSize)
+    // Get content for the category
+    const offset = (currentPage - 1) * pageSize
+    let contentQuery = supabaseAdmin
+      .from("content")
+      .select(`
+        *,
+        category:categories(name, slug)
+      `)
+      .eq("category_id", category.id)
+      .eq("is_published", true)
+
+    // Apply sorting based on filter
+    if (activeFilter === "popular") {
+      contentQuery = contentQuery.order("views", { ascending: false })
+    } else if (activeFilter === "trending") {
+      contentQuery = contentQuery.order("downloads", { ascending: false })
+    } else {
+      contentQuery = contentQuery.order("created_at", { ascending: false })
+    }
+
+    const { data: categoryContent, error: contentError } = await contentQuery
+      .range(offset, offset + pageSize - 1)
+
+    if (contentError) {
+      console.error(`Error fetching content for category ${categorySlug}:`, contentError)
+      return notFound()
+    }
+
+    // Get total count
+    const { count: totalItems, error: countError } = await supabaseAdmin
+      .from("content")
+      .select("id", { count: "exact", head: true })
+      .eq("category_id", category.id)
+      .eq("is_published", true)
+
+    if (countError) {
+      console.error(`Error getting count for category ${categorySlug}:`, countError)
+    }
+
+    const totalPages = Math.ceil((totalItems || 0) / pageSize)
     const hasNextPage = currentPage < totalPages
     const hasPrevPage = currentPage > 1
 

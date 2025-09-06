@@ -1,16 +1,62 @@
 import type { Metadata } from "next"
 import { CategoriesSection } from "@/components/categories-section"
-import { getCategoriesWithCounts } from "@/lib/category-service"
+import { createClient } from "@supabase/supabase-js"
 
 export const metadata: Metadata = {
   title: "All Categories",
   description: "Browse all content categories",
 }
 
-// Fetch categories using the service directly for build-time compatibility
+// Fetch categories using admin client for build-time compatibility
 async function getCategories() {
   try {
-    return await getCategoriesWithCounts()
+    // Create admin client that doesn't use cookies
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    )
+
+    // Get all categories
+    const { data: categories, error } = await supabaseAdmin
+      .from("categories")
+      .select("*")
+      .order("name")
+
+    if (error) {
+      console.error("Error fetching categories:", error)
+      return []
+    }
+
+    // For each category, get the count of content items
+    const categoriesWithCount = await Promise.all(
+      categories.map(async (category) => {
+        try {
+          const { count, error: countError } = await supabaseAdmin
+            .from("content")
+            .select("id", { count: "exact", head: true })
+            .eq("category_id", category.id)
+            .eq("is_published", true)
+
+          if (countError) {
+            console.error(`Error fetching content count for category ${category.slug}:`, countError)
+            return { ...category, content_count: 0 }
+          }
+
+          return { ...category, content_count: count || 0 }
+        } catch (error) {
+          console.error(`Exception fetching content count for category ${category.slug}:`, error)
+          return { ...category, content_count: 0 }
+        }
+      })
+    )
+
+    return categoriesWithCount
   } catch (error) {
     console.error('Error fetching categories:', error)
     return []
