@@ -88,7 +88,7 @@ export default async function ContentPage({ params }: { params: Promise<{ catego
   await incrementViews(content.id)
 
   // Get sidebar data directly with admin client
-  const { data: popularContent = [] } = await supabaseAdmin
+  const { data: popularContentData } = await supabaseAdmin
     .from("content")
     .select(`
       id, title, slug, image_url, views,
@@ -98,27 +98,35 @@ export default async function ContentPage({ params }: { params: Promise<{ catego
     .order("views", { ascending: false })
     .limit(6)
 
-  const { data: products = [] } = await supabaseAdmin
+  const { data: productsData } = await supabaseAdmin
     .from("products")
     .select("*")
     .eq("is_published", true)
     .limit(3)
 
-  const { data: categories = [] } = await supabaseAdmin
+  const { data: categoriesData } = await supabaseAdmin
     .from("categories")
     .select("*")
     .order("name")
     .limit(10)
 
+  // Ensure arrays are never null
+  const popularContent = popularContentData || []
+  const products = productsData || []
+  const categories = categoriesData || []
+
   // Function to render star rating
   const renderStarRating = (rating: number) => {
-    return (
-      <div className="flex">
-        {[...Array(5)].map((_, i) => (
-          <Star key={i} className={`w-3 h-3 ${i < rating ? "text-yellow-400 fill-yellow-400" : "text-gray-400"}`} />
-        ))}
-      </div>
-    )
+    const stars = []
+    for (let i = 0; i < 5; i++) {
+      stars.push(
+        <Star 
+          key={i} 
+          className={`w-3 h-3 ${i < rating ? "text-yellow-400 fill-yellow-400" : "text-gray-400"}`} 
+        />
+      )
+    }
+    return <div className="flex">{stars}</div>
   }
 
   // Get preview images from the content
@@ -128,8 +136,8 @@ export default async function ContentPage({ params }: { params: Promise<{ catego
     content.preview_images && Array.isArray(content.preview_images) && content.preview_images.length > 0
       ? content.preview_images
       : content.gallery && Array.isArray(content.gallery) && content.gallery.length > 0
-        ? content.gallery.map((item) => item.image_url)
-        : [content.image_url]
+        ? content.gallery.map((item) => item?.image_url).filter(Boolean)
+        : [content.image_url].filter(Boolean)
 
   // Ensure download_count has a default value if it's missing
   const downloadCount = content.download_count || 0
@@ -300,7 +308,7 @@ export default async function ContentPage({ params }: { params: Promise<{ catego
           <h3 className="text-xl font-bold mb-4">Categories</h3>
           <div className="bg-black/30 border border-pink-900/30 rounded-lg p-4">
             <div className="flex flex-wrap gap-2">
-              {categories.slice(0, 5).map((category) => (
+              {(categories || []).slice(0, 5).map((category) => (
                 <Link
                   key={category.id}
                   href={`/${category.slug}`}
@@ -322,7 +330,7 @@ export default async function ContentPage({ params }: { params: Promise<{ catego
         <div className="mb-8">
           <h3 className="text-xl font-bold mb-4">Most popular</h3>
           <div>
-            {popularContent.map((item) => (
+            {(popularContent || []).map((item) => (
               <Link key={item.id} href={`/${item.category?.slug}/${item.slug}`} className="block group">
                 <div className="rounded-lg border border-pink-900/30 bg-black overflow-hidden transition-all hover:border-pink-500/50 hover:shadow-[0_0_15px_rgba(236,72,153,0.2)]">
                   <div className="relative aspect-[3/4] w-full overflow-hidden">
@@ -362,7 +370,7 @@ export default async function ContentPage({ params }: { params: Promise<{ catego
         <div>
           <h3 className="text-xl font-bold mb-4 text-gray-100">Products</h3>
           <div className="space-y-4">
-            {products.map((product) => (
+            {(products || []).map((product) => (
               <Link key={product.id} href={`/shop/product/${product.id}`} className="block">
                 <div className="bg-black border border-pink-900/30 rounded-lg overflow-hidden hover:border-pink-500/50 transition-all duration-300">
                   <div className="flex">
