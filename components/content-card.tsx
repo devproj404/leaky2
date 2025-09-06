@@ -14,7 +14,6 @@ interface ContentCardProps {
   category: string
   title: string
   fileSize: string
-  views: number
   imageUrl: string
   priority?: boolean
   isPremium?: boolean
@@ -28,7 +27,6 @@ export function ContentCard({
   category,
   title,
   fileSize,
-  views,
   imageUrl,
   priority = false,
   isPremium = false,
@@ -179,7 +177,7 @@ export function ContentCard({
 
               {/* Stats bar */}
               <div className="bg-indigo-500 text-white px-4 py-1 rounded-md font-medium text-sm md:text-base w-auto">
-                {title} | {views.toLocaleString()} views
+                {title}
               </div>
             </div>
           </div>
@@ -239,9 +237,6 @@ export function ContentCard({
               <h3 className="text-sm sm:text-lg font-bold text-white mb-1 group-hover:text-pink-300 transition-colors line-clamp-2">
                 {title}
               </h3>
-              <div className="flex items-center text-xs text-gray-400 mb-2 sm:mb-3">
-                <span>{views.toLocaleString()} views</span>
-              </div>
             </div>
           </div>
         </Link>

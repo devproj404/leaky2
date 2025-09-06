@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Image from "next/image"
+import { getProxiedImageUrl, shouldProxyImage } from "@/lib/image-proxy"
 
 interface ExternalImageProps {
   src: string
@@ -22,44 +23,74 @@ export function ExternalImage({
   className = "",
   priority = false,
 }: ExternalImageProps) {
-  const [imgSrc, setImgSrc] = useState(src || "/placeholder.svg")
+  const [imgSrc, setImgSrc] = useState(() => {
+    if (!src) return "/placeholder.svg"
+    return shouldProxyImage(src) ? getProxiedImageUrl(src) : src
+  })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(false)
-  const [useProxy, setUseProxy] = useState(false)
+  const [retryCount, setRetryCount] = useState(0)
+  const [isProxied, setIsProxied] = useState(() => shouldProxyImage(src))
 
   useEffect(() => {
-    // Reset states when src changes
-    setImgSrc(src || "/placeholder.svg")
-    setIsLoading(true)
-    setError(false)
-    setUseProxy(false)
-
-    // Check if src is defined before using includes
-    if (src) {
-      // Check if the image is from a domain that might need proxying
-      const needsProxy = src.includes("pixhost.to") || src.includes("imghost") || src.includes("imagetwist")
-      if (needsProxy) {
-        setImgSrc(`/api/image-proxy?url=${encodeURIComponent(src)}`)
-      }
-    } else {
-      // If src is undefined, set error state
+    if (!src) {
       setError(true)
       setIsLoading(false)
+      setImgSrc("/placeholder.svg")
+      return
+    }
+
+    // Reset states when src changes
+    setIsLoading(true)
+    setError(false)
+    setRetryCount(0)
+    
+    // Determine if we should proxy this image
+    const needsProxying = shouldProxyImage(src)
+    setIsProxied(needsProxying)
+    
+    // Set the appropriate image source
+    if (needsProxying) {
+      setImgSrc(getProxiedImageUrl(src))
+      console.log(`[ExternalImage] Using proxy for: ${src}`)
+    } else {
+      setImgSrc(src)
     }
   }, [src])
 
-  // Function to handle image load error
+  // Function to handle image load error with intelligent retry
   const handleError = () => {
-    if (src && !useProxy && (src.includes("pixhost.to") || src.includes("imghost") || src.includes("imagetwist"))) {
-      // Try using the proxy if direct loading failed
-      setUseProxy(true)
-      setImgSrc(`/api/image-proxy?url=${encodeURIComponent(src)}`)
-    } else {
+    console.warn(`[ExternalImage] Failed to load image: ${imgSrc}`)
+    
+    if (!src) {
       setError(true)
       setIsLoading(false)
-      // Use a placeholder image when the original fails to load
-      setImgSrc("/placeholder.svg")
+      return
     }
+
+    // First retry: try direct URL if we were using proxy
+    if (isProxied && retryCount === 0) {
+      console.log(`[ExternalImage] Retrying with direct URL: ${src}`)
+      setRetryCount(1)
+      setImgSrc(src)
+      setIsProxied(false)
+      return
+    }
+    
+    // Second retry: try proxy if we were using direct URL
+    if (!isProxied && retryCount === 0 && shouldProxyImage(src)) {
+      console.log(`[ExternalImage] Retrying with proxy: ${src}`)
+      setRetryCount(1)
+      setImgSrc(getProxiedImageUrl(src))
+      setIsProxied(true)
+      return
+    }
+    
+    // Final fallback: show placeholder
+    console.error(`[ExternalImage] All retry attempts failed for: ${src}`)
+    setError(true)
+    setIsLoading(false)
+    setImgSrc("/placeholder.svg")
   }
 
   return (
@@ -86,7 +117,7 @@ export function ExternalImage({
         onLoad={() => setIsLoading(false)}
         onError={handleError}
         priority={priority}
-        unoptimized={useProxy} // Skip Next.js optimization for proxied images
+        unoptimized={isProxied} // Skip Next.js optimization for proxied images
       />
     </div>
   )

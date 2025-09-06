@@ -12,6 +12,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Trash2, Edit, Plus, ExternalLink } from "lucide-react"
 import { getAllAds, createAd, updateAd, deleteAd } from "@/lib/ad-service"
 import type { AdSlot } from "@/lib/ad-service"
+import { ImageInput } from "@/components/image-input"
+import { ExternalImage } from "@/components/external-image"
 
 const PLACEMENT_OPTIONS = [
   { value: "homepage-top", label: "Homepage - Top" },
@@ -34,6 +36,7 @@ export default function AdSlotsPage() {
     is_active: false,
     priority: 1
   })
+  const [editFormData, setEditFormData] = useState<Partial<AdSlot>>({})
 
   const fetchAds = async () => {
     setLoading(true)
@@ -73,12 +76,40 @@ export default function AdSlotsPage() {
     }
   }
 
-  const handleUpdate = async (id: number, updates: Partial<AdSlot>) => {
+  const startEditing = (ad: AdSlot) => {
+    setIsEditing(ad.id)
+    setEditFormData({
+      name: ad.name,
+      description: ad.description,
+      image_url: ad.image_url,
+      link_url: ad.link_url,
+      placement: ad.placement,
+      is_active: ad.is_active,
+      priority: ad.priority
+    })
+  }
+
+  const handleUpdate = async (id: number) => {
     try {
+      // Only send the changed fields, but ensure we have the complete object
+      const currentAd = ads.find(ad => ad.id === id)
+      if (!currentAd) return
+
+      const updates = {
+        name: editFormData.name ?? currentAd.name,
+        description: editFormData.description ?? currentAd.description,
+        image_url: editFormData.image_url ?? currentAd.image_url,
+        link_url: editFormData.link_url ?? currentAd.link_url,
+        placement: editFormData.placement ?? currentAd.placement,
+        is_active: editFormData.is_active ?? currentAd.is_active,
+        priority: editFormData.priority ?? currentAd.priority
+      }
+
       const updated = await updateAd(id, updates)
       if (updated) {
         await fetchAds()
         setIsEditing(null)
+        setEditFormData({})
       }
     } catch (error) {
       console.error("Error updating ad:", error)
@@ -99,7 +130,14 @@ export default function AdSlotsPage() {
   }
 
   const toggleActive = async (id: number, currentActiveState: boolean) => {
-    await handleUpdate(id, { is_active: !currentActiveState })
+    try {
+      const updated = await updateAd(id, { is_active: !currentActiveState })
+      if (updated) {
+        await fetchAds()
+      }
+    } catch (error) {
+      console.error("Error toggling ad status:", error)
+    }
   }
 
   const getPlacementLabel = (placement: string) => {
@@ -167,16 +205,13 @@ export default function AdSlotsPage() {
                 />
               </div>
 
-              <div>
-                <Label htmlFor="image_url">Image URL</Label>
-                <Input
-                  id="image_url"
-                  value={formData.image_url}
-                  onChange={(e) => setFormData(prev => ({ ...prev, image_url: e.target.value }))}
-                  placeholder="https://example.com/ad-banner.jpg"
-                  required
-                />
-              </div>
+              <ImageInput
+                label="Ad Image URL"
+                value={formData.image_url}
+                onChange={(value) => setFormData(prev => ({ ...prev, image_url: value }))}
+                placeholder="https://imgur.com/your-ad-banner.jpg"
+                required
+              />
 
               <div>
                 <Label htmlFor="link_url">Link URL</Label>
@@ -228,15 +263,16 @@ export default function AdSlotsPage() {
           <Card key={ad.id}>
             <CardContent className="p-6">
               <div className="flex items-start gap-4">
-                <div className="relative flex-shrink-0">
+                <div className="relative flex-shrink-0 w-24 h-16">
                   {ad.image_url ? (
-                    <img
+                    <ExternalImage
                       src={ad.image_url}
                       alt={ad.name}
-                      className="w-24 h-16 object-cover rounded border"
+                      fill
+                      className="object-cover rounded border"
                     />
                   ) : (
-                    <div className="w-24 h-16 bg-gray-200 rounded border flex items-center justify-center">
+                    <div className="w-full h-full bg-gray-200 rounded border flex items-center justify-center">
                       <span className="text-gray-500 text-xs">No Image</span>
                     </div>
                   )}
@@ -270,7 +306,7 @@ export default function AdSlotsPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => setIsEditing(ad.id)}
+                        onClick={() => startEditing(ad)}
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
@@ -292,13 +328,13 @@ export default function AdSlotsPage() {
                     <div>
                       <Label>Ad Name</Label>
                       <Input
-                        defaultValue={ad.name}
-                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                        value={editFormData.name || ''}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
                       />
                     </div>
                     <div>
                       <Label>Placement</Label>
-                      <Select defaultValue={ad.placement} onValueChange={(value) => setFormData(prev => ({ ...prev, placement: value }))}>
+                      <Select value={editFormData.placement} onValueChange={(value) => setEditFormData(prev => ({ ...prev, placement: value }))}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
@@ -316,25 +352,24 @@ export default function AdSlotsPage() {
                   <div>
                     <Label>Description</Label>
                     <Textarea
-                      defaultValue={ad.description}
-                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                      value={editFormData.description || ''}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, description: e.target.value }))}
                       rows={2}
                     />
                   </div>
 
-                  <div>
-                    <Label>Image URL</Label>
-                    <Input
-                      defaultValue={ad.image_url}
-                      onChange={(e) => setFormData(prev => ({ ...prev, image_url: e.target.value }))}
-                    />
-                  </div>
+                  <ImageInput
+                    label="Ad Image URL"
+                    value={editFormData.image_url || ''}
+                    onChange={(value) => setEditFormData(prev => ({ ...prev, image_url: value }))}
+                    placeholder="https://imgur.com/your-ad-banner.jpg"
+                  />
 
                   <div>
                     <Label>Link URL</Label>
                     <Input
-                      defaultValue={ad.link_url}
-                      onChange={(e) => setFormData(prev => ({ ...prev, link_url: e.target.value }))}
+                      value={editFormData.link_url || ''}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, link_url: e.target.value }))}
                     />
                   </div>
 
@@ -344,22 +379,25 @@ export default function AdSlotsPage() {
                       type="number"
                       min="1"
                       max="10"
-                      defaultValue={ad.priority}
-                      onChange={(e) => setFormData(prev => ({ ...prev, priority: parseInt(e.target.value) || 1 }))}
+                      value={editFormData.priority || 1}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, priority: parseInt(e.target.value) || 1 }))}
                     />
                   </div>
 
                   <div className="flex gap-2">
                     <Button
                       size="sm"
-                      onClick={() => handleUpdate(ad.id, formData)}
+                      onClick={() => handleUpdate(ad.id)}
                     >
                       Save Changes
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => setIsEditing(null)}
+                      onClick={() => {
+                        setIsEditing(null)
+                        setEditFormData({})
+                      }}
                     >
                       Cancel
                     </Button>

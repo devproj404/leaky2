@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient } from '@supabase/supabase-js'
 import { getCached, cacheKeys, CACHE_TTL } from '@/lib/cache'
 
 export const runtime = 'nodejs'
@@ -38,9 +38,17 @@ export async function GET(request: Request) {
     const data = await getCached(
       cacheKey,
       async () => {
-        // Fetching premium content from database
-        
-        const supabase = await createClient()
+        // Fetching premium content from database using admin client
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          {
+            auth: {
+              autoRefreshToken: false,
+              persistSession: false,
+            },
+          }
+        )
         const offset = (page - 1) * limit
         
         // Optimized query - only fetch needed fields

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient } from '@supabase/supabase-js'
 import { getCached, cacheKeys, CACHE_TTL } from '@/lib/cache'
 
 export const runtime = 'nodejs'
@@ -9,9 +9,14 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const limitParam = searchParams.get('limit')
+    const pageParam = searchParams.get('page')
+    const sortParam = searchParams.get('sort')
+    
     const limit = limitParam ? parseInt(limitParam, 10) : 12
+    const page = pageParam ? parseInt(pageParam, 10) : 1
+    const sort = sortParam || 'views'
 
-    // Validate limit
+    // Validate parameters
     if (limit < 1 || limit > 50) {
       return NextResponse.json(
         { error: 'Limit must be between 1 and 50' },
@@ -19,16 +24,35 @@ export async function GET(request: Request) {
       )
     }
 
+    if (page < 1) {
+      return NextResponse.json(
+        { error: 'Page must be >= 1' },
+        { status: 400 }
+      )
+    }
+
+    // Create cache key for trending content
+    const cacheKey = `content:trending:page:${page}:limit:${limit}:sort:${sort}`
+
     // Use cache for trending content
     const data = await getCached(
-      cacheKeys.content.trending(limit),
+      cacheKey,
       async () => {
-        // Fetching trending content from database
-        
-        const supabase = await createClient()
+        // Fetching trending content from database using admin client
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          {
+            auth: {
+              autoRefreshToken: false,
+              persistSession: false,
+            },
+          }
+        )
+        const offset = (page - 1) * limit
         
         // Optimized query - only fetch needed fields
-        const { data, error } = await supabase
+        let query = supabase
           .from('content')
           .select(`
             id,
@@ -44,8 +68,25 @@ export async function GET(request: Request) {
           // Apply published filter
           .or(`is_published.eq.true,and(is_scheduled.eq.true,publish_at.lte.${new Date().toISOString()})`)
           .not('title', 'eq', '4654654654') // Exclude problematic content
-          .order('views', { ascending: false })
-          .limit(limit)
+
+        // Apply sorting
+        switch (sort) {
+          case 'views':
+          case 'most-viewed':
+            query = query.order('views', { ascending: false })
+            break
+          case 'newest':
+            query = query.order('created_at', { ascending: false })
+            break
+          default:
+            query = query.order('views', { ascending: false })
+            break
+        }
+
+        // Apply pagination
+        query = query.range(offset, offset + limit - 1)
+
+        const { data, error } = await query
 
         if (error) {
           // Database error fetching trending content
@@ -54,8 +95,12 @@ export async function GET(request: Request) {
 
         return {
           content: data || [],
+          page,
+          limit,
+          sort,
+          total_items: data?.length || 0,
           cached_at: new Date().toISOString(),
-          cache_key: cacheKeys.content.trending(limit),
+          cache_key: cacheKey,
         }
       },
       CACHE_TTL.SHORT // 5 minutes cache

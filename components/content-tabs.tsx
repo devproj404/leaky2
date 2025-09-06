@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { RefreshCw, ChevronLeft, ChevronRight, AlertTriangle, ChevronDown, SlidersHorizontal } from "lucide-react"
+import { RefreshCw, ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react"
 import { ContentCard } from "./content-card"
 import type { Content } from "@/lib/content-service"
 
@@ -13,18 +13,12 @@ type TabData = {
   loaded: boolean
 }
 
-type SortOption = "newest" | "most-viewed"
-
 export function ContentTabs() {
   const [activeTab, setActiveTab] = useState<"premium" | "free">("premium")
-  const [sortBy, setSortBy] = useState<SortOption>("newest")
-  const [showSortDropdown, setShowSortDropdown] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [connectionLost, setConnectionLost] = useState(false)
   const [offlineMode, setOfflineMode] = useState(false)
-
-  const sortDropdownRef = useRef<HTMLDivElement>(null)
 
   // Cache content for each tab
   const [tabsData, setTabsData] = useState<Record<string, TabData>>({
@@ -70,19 +64,6 @@ export function ContentTabs() {
   const currentTabData = tabsData[activeTab]
   const { content, currentPage, totalPages } = currentTabData
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target as Node)) {
-        setShowSortDropdown(false)
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside)
-    }
-  }, [])
 
   // Function to refresh content manually
   const refreshContent = () => {
@@ -123,24 +104,6 @@ export function ContentTabs() {
     fetchContent(page)
   }
 
-  // Function to handle sort change
-  const handleSortChange = (sort: SortOption) => {
-    setSortBy(sort)
-    setShowSortDropdown(false)
-
-    // Reset loaded state for current tab
-    setTabsData((prev) => ({
-      ...prev,
-      [activeTab]: {
-        ...prev[activeTab],
-        loaded: false,
-        currentPage: 1,
-      },
-    }))
-
-    // Trigger a fetch with the new sort
-    fetchContent(1)
-  }
 
   // Function to fetch content using cached API
   const fetchContent = async (page = currentPage) => {
@@ -158,16 +121,9 @@ export function ContentTabs() {
       
       // Use different endpoints based on active tab
       if (activeTab === "premium") {
-        apiUrl = `/api/content/premium?limit=${itemsPerPage}&page=${page}`
+        apiUrl = `/api/content/premium?limit=${itemsPerPage}&page=${page}&sort=newest`
       } else if (activeTab === "free") {
-        apiUrl = `/api/content/free?limit=${itemsPerPage}&page=${page}`
-      }
-      
-      // Add sort parameter
-      if (sortBy === "most-viewed") {
-        apiUrl += `&sort=views`
-      } else {
-        apiUrl += `&sort=newest`
+        apiUrl = `/api/content/free?limit=${itemsPerPage}&page=${page}&sort=newest`
       }
 
       console.log(`Fetching content from cached API: ${apiUrl}`)
@@ -377,35 +333,6 @@ export function ContentTabs() {
               Refresh
             </Button>
           </div>
-
-          {/* Sort Dropdown */}
-          <div className="relative" ref={sortDropdownRef}>
-            <button
-              className="flex items-center gap-2 bg-black/80 border border-pink-900/30 rounded-full px-4 py-2 text-sm text-gray-300 hover:text-white"
-              onClick={() => setShowSortDropdown(!showSortDropdown)}
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              <span>Sort By {sortBy === "newest" ? "Newest" : "Most Views"}</span>
-              <ChevronDown className="w-3.5 h-3.5" />
-            </button>
-
-            {showSortDropdown && (
-              <div className="absolute top-full left-0 mt-1 w-48 bg-black border border-pink-900/30 rounded-lg shadow-lg z-10 overflow-hidden">
-                <button
-                  className={`w-full text-left px-4 py-2 text-sm ${sortBy === "newest" ? "bg-pink-900/30 text-white" : "text-gray-300 hover:bg-pink-900/20 hover:text-white"}`}
-                  onClick={() => handleSortChange("newest")}
-                >
-                  Newest
-                </button>
-                <button
-                  className={`w-full text-left px-4 py-2 text-sm ${sortBy === "most-viewed" ? "bg-pink-900/30 text-white" : "text-gray-300 hover:bg-pink-900/20 hover:text-white"}`}
-                  onClick={() => handleSortChange("most-viewed")}
-                >
-                  Most Views
-                </button>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Pagination Controls */}
@@ -485,7 +412,6 @@ export function ContentTabs() {
             category={item.category?.name || ""}
             title={item.title}
             fileSize={item.file_size}
-            views={item.views}
             imageUrl={item.image_url}
             isPremium={item.is_premium}
             slug={item.slug}

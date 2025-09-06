@@ -72,12 +72,21 @@ export default async function CategoryPage({
       .eq("category_id", category.id)
       .eq("is_published", true)
 
+    // Apply filtering based on filter type
+    if (activeFilter === "premium") {
+      contentQuery = contentQuery.eq("is_premium", true)
+    } else if (activeFilter === "free") {
+      contentQuery = contentQuery.eq("is_premium", false)
+    }
+
     // Apply sorting based on filter
-    if (activeFilter === "popular") {
+    if (activeFilter === "views") {
       contentQuery = contentQuery.order("views", { ascending: false })
-    } else if (activeFilter === "trending") {
-      contentQuery = contentQuery.order("downloads", { ascending: false })
+    } else if (activeFilter === "premium" || activeFilter === "free") {
+      // For premium/free filters, sort by newest first
+      contentQuery = contentQuery.order("created_at", { ascending: false })
     } else {
+      // Default: recent (newest first)
       contentQuery = contentQuery.order("created_at", { ascending: false })
     }
 
@@ -89,12 +98,21 @@ export default async function CategoryPage({
       return notFound()
     }
 
-    // Get total count
-    const { count: totalItems, error: countError } = await supabaseAdmin
+    // Get total count with same filtering
+    let countQuery = supabaseAdmin
       .from("content")
       .select("id", { count: "exact", head: true })
       .eq("category_id", category.id)
       .eq("is_published", true)
+
+    // Apply same filtering to count query
+    if (activeFilter === "premium") {
+      countQuery = countQuery.eq("is_premium", true)
+    } else if (activeFilter === "free") {
+      countQuery = countQuery.eq("is_premium", false)
+    }
+
+    const { count: totalItems, error: countError } = await countQuery
 
     if (countError) {
       console.error(`Error getting count for category ${categorySlug}:`, countError)
@@ -141,7 +159,6 @@ export default async function CategoryPage({
                 category={category.name}
                 title={content.title}
                 fileSize={content.file_size}
-                views={content.views}
                 imageUrl={content.image_url}
                 isPremium={content.is_premium}
                 slug={content.slug}
