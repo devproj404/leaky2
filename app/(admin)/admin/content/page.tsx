@@ -245,18 +245,136 @@ interface Category {
 }
 
 // Add this utility function after the imports and before the interfaces
-const extractImageUrlsFromBBCode = (bbcodeText: string): string[] => {
-  const imgRegex = /\[img\](.*?)\[\/img\]/g
-  const urls: string[] = []
-  let match
+const cleanupPreviewUrls = (urls: string[]): string[] => {
+  return urls
+    .map(url => {
+      if (!url || !url.trim()) return null
+      const cleaned = extractImageUrlsFromBBCode(url.trim())
+      return cleaned.length > 0 ? cleaned[0] : (url.trim().startsWith('http') ? url.trim() : null)
+    })
+    .filter((url): url is string => url !== null)
+}
 
+const transformPixhostUrl = (url: string): string => {
+  // Transform pixhost URLs: change t1 to img1 and thumbs to images
+  if (url.includes('pixhost.to')) {
+    return url
+      // Handle various pixhost URL patterns
+      .replace(/https?:\/\/t1\.pixhost\.to\/thumbs\//g, 'https://img1.pixhost.to/images/')
+      .replace(/\/\/t1\.pixhost\.to\/thumbs\//g, '//img1.pixhost.to/images/')
+      .replace(/t1\.pixhost\.to\/thumbs/g, 'img1.pixhost.to/images')
+      // Handle cases where there might be different subdomains
+      .replace(/\/t(\d+)\.pixhost\.to\/thumbs\//g, '/img$1.pixhost.to/images/')
+      .replace(/t(\d+)\.pixhost\.to\/thumbs/g, 'img$1.pixhost.to/images')
+  }
+  return url
+}
+
+const extractImageUrlsFromBBCode = (bbcodeText: string): string[] => {
+  const urls: string[] = []
+  
+  // First, try to extract URLs from [img] BBCode tags
+  const imgRegex = /\[img\](.*?)\[\/img\]/g
+  let match
+  
   while ((match = imgRegex.exec(bbcodeText)) !== null) {
     if (match[1] && match[1].trim()) {
-      urls.push(match[1].trim())
+      const transformedUrl = transformPixhostUrl(match[1].trim())
+      urls.push(transformedUrl)
+    }
+  }
+  
+  // Second, try to extract URLs from [url] BBCode tags (like pixhost show URLs)
+  const urlRegex = /\[url=(.*?)\]/g
+  while ((match = urlRegex.exec(bbcodeText)) !== null) {
+    if (match[1] && match[1].trim()) {
+      const url = match[1].trim()
+      // Convert pixhost show URLs to image URLs
+      if (url.includes('pixhost.to/show/')) {
+        // Extract the image ID and convert to image URL
+        const showMatch = url.match(/pixhost\.to\/show\/(\d+)\/([^\/\]]+)/)
+        if (showMatch) {
+          const [, folderId, filename] = showMatch
+          const imageUrl = `https://img1.pixhost.to/images/${folderId}/${filename}`
+          const transformedUrl = transformPixhostUrl(imageUrl)
+          urls.push(transformedUrl)
+        }
+      } else if (url.includes('pixhost.to') || url.startsWith('http://') || url.startsWith('https://')) {
+        // For other URLs, apply transformation and add
+        const transformedUrl = transformPixhostUrl(url)
+        urls.push(transformedUrl)
+      }
+    }
+  }
+  
+  // Also check for standalone [url] tags without = (like [url]https://example.com[/url])
+  const standaloneUrlRegex = /\[url\](.*?)\[\/url\]/g
+  while ((match = standaloneUrlRegex.exec(bbcodeText)) !== null) {
+    if (match[1] && match[1].trim()) {
+      const url = match[1].trim()
+      if (url.includes('pixhost.to/show/')) {
+        // Convert pixhost show URLs to image URLs
+        const showMatch = url.match(/pixhost\.to\/show\/(\d+)\/([^\/\]]+)/)
+        if (showMatch) {
+          const [, folderId, filename] = showMatch
+          const imageUrl = `https://img1.pixhost.to/images/${folderId}/${filename}`
+          const transformedUrl = transformPixhostUrl(imageUrl)
+          urls.push(transformedUrl)
+        }
+      } else if (url.includes('pixhost.to') || url.startsWith('http://') || url.startsWith('https://')) {
+        const transformedUrl = transformPixhostUrl(url)
+        urls.push(transformedUrl)
+      }
+    }
+  }
+  
+  // If no BBCode tags found, try to extract plain URLs (one per line or space-separated)
+  if (urls.length === 0) {
+    const lines = bbcodeText.split(/[\n\r]+/)
+    for (const line of lines) {
+      const trimmed = line.trim()
+      // Check if line looks like a URL
+      if (trimmed && (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.includes('pixhost.to'))) {
+        // Handle pixhost show URLs
+        if (trimmed.includes('pixhost.to/show/')) {
+          const showMatch = trimmed.match(/pixhost\.to\/show\/(\d+)\/([^\/\s]+)/)
+          if (showMatch) {
+            const [, folderId, filename] = showMatch
+            const imageUrl = `https://img1.pixhost.to/images/${folderId}/${filename}`
+            const transformedUrl = transformPixhostUrl(imageUrl)
+            urls.push(transformedUrl)
+          }
+        } else {
+          const transformedUrl = transformPixhostUrl(trimmed)
+          urls.push(transformedUrl)
+        }
+      }
+    }
+  }
+  
+  // Also try to extract space-separated URLs from a single line
+  if (urls.length === 0) {
+    const spaceUrls = bbcodeText.split(/\s+/).filter(part => 
+      part.trim() && (part.startsWith('http://') || part.startsWith('https://') || part.includes('pixhost.to'))
+    )
+    for (const url of spaceUrls) {
+      if (url.includes('pixhost.to/show/')) {
+        const showMatch = url.match(/pixhost\.to\/show\/(\d+)\/([^\/\s]+)/)
+        if (showMatch) {
+          const [, folderId, filename] = showMatch
+          const imageUrl = `https://img1.pixhost.to/images/${folderId}/${filename}`
+          const transformedUrl = transformPixhostUrl(imageUrl)
+          urls.push(transformedUrl)
+        }
+      } else {
+        const transformedUrl = transformPixhostUrl(url.trim())
+        urls.push(transformedUrl)
+      }
     }
   }
 
-  return urls
+  // Remove duplicates
+  return [...new Set(urls)]
 }
 
 export default function ContentManagementPage() {
@@ -1605,7 +1723,7 @@ export default function ContentManagementPage() {
                           setBulkImageInput("")
                           toast({
                             title: "Success",
-                            description: `Added ${urls.length} image(s) from BBCode`,
+                            description: `Added ${urls.length} image(s) from BBCode (pixhost URLs auto-transformed)`,
                             variant: "default",
                           })
                         } else {
@@ -1626,21 +1744,103 @@ export default function ContentManagementPage() {
                         </span>
                       )}
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const transformedUrls = newContent.preview_images.map(transformPixhostUrl)
+                        const changedCount = newContent.preview_images.filter((url, index) => url !== transformedUrls[index]).length
+                        
+                        if (changedCount > 0) {
+                          setNewContent({
+                            ...newContent,
+                            preview_images: transformedUrls,
+                          })
+                          toast({
+                            title: "Success",
+                            description: `Transformed ${changedCount} pixhost URL(s) (t1→img1, thumbs→images)`,
+                            variant: "default",
+                          })
+                        } else {
+                          toast({
+                            title: "No changes needed",
+                            description: "No pixhost URLs found that need transformation",
+                            variant: "default",
+                          })
+                        }
+                      }}
+                      disabled={newContent.preview_images.length === 0}
+                      className="border-gray-800 text-gray-300"
+                    >
+                      🔧 Fix Pixhost URLs
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const cleanedUrls = cleanupPreviewUrls(newContent.preview_images)
+                        const removedCount = newContent.preview_images.length - cleanedUrls.length
+                        
+                        setNewContent({
+                          ...newContent,
+                          preview_images: cleanedUrls,
+                        })
+                        toast({
+                          title: "URLs Cleaned",
+                          description: `Processed all URLs. ${removedCount > 0 ? `Removed ${removedCount} invalid URLs.` : 'All URLs are valid.'}`,
+                          variant: "default",
+                        })
+                      }}
+                      disabled={newContent.preview_images.length === 0}
+                      className="border-gray-800 text-gray-300"
+                    >
+                      🧹 Clean URLs
+                    </Button>
                   </div>
                 </div>
 
                 {/* Bulk Image Input */}
                 <div className="space-y-2">
                   <Label htmlFor="bulk-image-input" className="text-sm text-gray-400">
-                    Paste BBCode with image URLs (e.g., [img]https://example.com/image.jpg[/img])
+                    Paste image URLs, pixhost show URLs, or BBCode (one per line or space-separated)
                   </Label>
                   <Textarea
                     id="bulk-image-input"
                     value={bulkImageInput}
                     onChange={(e) => setBulkImageInput(e.target.value)}
-                    placeholder="[url=https://pixhost.to/show/7688/628334976_png-1.png][img]https://t1.pixhost.to/thumbs/7688/628334976_png-1.png[/img][/url] [url=https://pixhost.to/show/7688/628334978_png-2.png][img]https://t1.pixhost.to/thumbs/7688/628334978_png-2.png[/img][/url]"
+                    placeholder="https://img1.pixhost.to/images/7987/632058135_leakybabes-com-vip_8_1.jpg&#10;https://img1.pixhost.to/images/7987/632058136_leakybabes-com-vip_3.jpg&#10;&#10;Or paste BBCode:&#10;[url=https://pixhost.to/show/8530/638452633_leakybabes.jpg]&#10;[url]https://pixhost.to/show/8530/638452633_leakybabes.jpg[/url]&#10;[url=https://pixhost.to/show/7688/628334976_png-1.png][img]https://img1.pixhost.to/images/7688/628334976_png-1.png[/img][/url]"
                     className="bg-black/60 border-gray-800 focus:border-pink-700 text-gray-300 min-h-[80px]"
                   />
+                  
+                  {/* Real-time URL detection preview */}
+                  {bulkImageInput.trim() && (
+                    <div className="p-3 bg-gray-900/50 border border-gray-700 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <ImageIcon className="h-4 w-4 text-blue-400" />
+                        <span className="text-sm text-blue-400 font-medium">
+                          Detected URLs: {extractImageUrlsFromBBCode(bulkImageInput).length}
+                        </span>
+                      </div>
+                      {extractImageUrlsFromBBCode(bulkImageInput).length > 0 ? (
+                        <div className="space-y-1 max-h-32 overflow-y-auto">
+                          {extractImageUrlsFromBBCode(bulkImageInput).slice(0, 6).map((url, index) => (
+                            <div key={index} className="text-xs text-gray-400 truncate">
+                              {index + 1}. {url}
+                            </div>
+                          ))}
+                          {extractImageUrlsFromBBCode(bulkImageInput).length > 6 && (
+                            <div className="text-xs text-gray-500">
+                              ... and {extractImageUrlsFromBBCode(bulkImageInput).length - 6} more
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-gray-500">
+                          No valid image URLs detected. Try pasting URLs starting with http:// or https://
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {newContent.preview_images.length === 0 ? (
@@ -1657,13 +1857,23 @@ export default function ContentManagementPage() {
                           value={url}
                           onChange={(e) => {
                             const newUrls = [...newContent.preview_images]
-                            newUrls[index] = e.target.value
+                            let inputValue = e.target.value
+                            
+                            // Auto-transform URLs as they're typed
+                            if (inputValue.trim()) {
+                              const extracted = extractImageUrlsFromBBCode(inputValue)
+                              if (extracted.length > 0) {
+                                inputValue = extracted[0] // Use the first extracted URL
+                              }
+                            }
+                            
+                            newUrls[index] = inputValue
                             setNewContent({
                               ...newContent,
                               preview_images: newUrls,
                             })
                           }}
-                          placeholder="https://example.com/preview-image.jpg"
+                          placeholder="https://example.com/preview-image.jpg or [url]...[/url] or pixhost show URL"
                           className="bg-black/60 border-gray-800 focus:border-pink-700 text-gray-300 flex-grow"
                         />
                         <Button
@@ -1699,7 +1909,7 @@ export default function ContentManagementPage() {
                           className="aspect-video rounded-lg overflow-hidden bg-gray-900 border border-gray-800"
                         >
                           <ExternalImage
-                            src={url}
+                            src={url && (url.startsWith('http://') || url.startsWith('https://')) ? url : "/placeholder.svg"}
                             alt={`Preview ${index + 1}`}
                             width={200}
                             height={120}
@@ -1982,7 +2192,7 @@ export default function ContentManagementPage() {
                             setEditBulkImageInput("")
                             toast({
                               title: "Success",
-                              description: `Added ${urls.length} image(s) from BBCode`,
+                              description: `Added ${urls.length} image(s) from BBCode (pixhost URLs auto-transformed)`,
                               variant: "default",
                             })
                           } else {
@@ -2003,21 +2213,103 @@ export default function ContentManagementPage() {
                           </span>
                         )}
                       </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const transformedUrls = (currentItem.preview_images || []).map(transformPixhostUrl)
+                          const changedCount = (currentItem.preview_images || []).filter((url, index) => url !== transformedUrls[index]).length
+                          
+                          if (changedCount > 0) {
+                            setCurrentItem({
+                              ...currentItem,
+                              preview_images: transformedUrls,
+                            })
+                            toast({
+                              title: "Success",
+                              description: `Transformed ${changedCount} pixhost URL(s) (t1→img1, thumbs→images)`,
+                              variant: "default",
+                            })
+                          } else {
+                            toast({
+                              title: "No changes needed",
+                              description: "No pixhost URLs found that need transformation",
+                              variant: "default",
+                            })
+                          }
+                        }}
+                        disabled={!currentItem.preview_images || currentItem.preview_images.length === 0}
+                        className="border-gray-800 text-gray-300"
+                      >
+                        🔧 Fix Pixhost URLs
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const cleanedUrls = cleanupPreviewUrls(currentItem.preview_images || [])
+                          const removedCount = (currentItem.preview_images || []).length - cleanedUrls.length
+                          
+                          setCurrentItem({
+                            ...currentItem,
+                            preview_images: cleanedUrls,
+                          })
+                          toast({
+                            title: "URLs Cleaned",
+                            description: `Processed all URLs. ${removedCount > 0 ? `Removed ${removedCount} invalid URLs.` : 'All URLs are valid.'}`,
+                            variant: "default",
+                          })
+                        }}
+                        disabled={!currentItem.preview_images || currentItem.preview_images.length === 0}
+                        className="border-gray-800 text-gray-300"
+                      >
+                        🧹 Clean URLs
+                      </Button>
                     </div>
                   </div>
 
                   {/* Bulk Image Input for Edit */}
                   <div className="space-y-2">
                     <Label htmlFor="edit-bulk-image-input" className="text-sm text-gray-400">
-                      Paste BBCode with image URLs (e.g., [img]https://example.com/image.jpg[/img])
+                      Paste image URLs, pixhost show URLs, or BBCode (one per line or space-separated)
                     </Label>
                     <Textarea
                       id="edit-bulk-image-input"
                       value={editBulkImageInput}
                       onChange={(e) => setEditBulkImageInput(e.target.value)}
-                      placeholder="[url=https://pixhost.to/show/7688/628334976_png-1.png][img]https://t1.pixhost.to/thumbs/7688/628334976_png-1.png[/img][/url] [url=https://pixhost.to/show/7688/628334978_png-2.png][img]https://t1.pixhost.to/thumbs/7688/628334978_png-2.png[/img][/url]"
+                      placeholder="https://img1.pixhost.to/images/7987/632058135_leakybabes-com-vip_8_1.jpg&#10;https://img1.pixhost.to/images/7987/632058136_leakybabes-com-vip_3.jpg&#10;&#10;Or paste BBCode:&#10;[url=https://pixhost.to/show/8530/638452633_leakybabes.jpg]&#10;[url]https://pixhost.to/show/8530/638452633_leakybabes.jpg[/url]&#10;[url=https://pixhost.to/show/7688/628334976_png-1.png][img]https://img1.pixhost.to/images/7688/628334976_png-1.png[/img][/url]"
                       className="bg-black/60 border-gray-800 focus:border-pink-700 text-gray-300 min-h-[80px]"
                     />
+                    
+                    {/* Real-time URL detection preview */}
+                    {editBulkImageInput.trim() && (
+                      <div className="p-3 bg-gray-900/50 border border-gray-700 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <ImageIcon className="h-4 w-4 text-blue-400" />
+                          <span className="text-sm text-blue-400 font-medium">
+                            Detected URLs: {extractImageUrlsFromBBCode(editBulkImageInput).length}
+                          </span>
+                        </div>
+                        {extractImageUrlsFromBBCode(editBulkImageInput).length > 0 ? (
+                          <div className="space-y-1 max-h-32 overflow-y-auto">
+                            {extractImageUrlsFromBBCode(editBulkImageInput).slice(0, 6).map((url, index) => (
+                              <div key={index} className="text-xs text-gray-400 truncate">
+                                {index + 1}. {url}
+                              </div>
+                            ))}
+                            {extractImageUrlsFromBBCode(editBulkImageInput).length > 6 && (
+                              <div className="text-xs text-gray-500">
+                                ... and {extractImageUrlsFromBBCode(editBulkImageInput).length - 6} more
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-gray-500">
+                            No valid image URLs detected. Try pasting URLs starting with http:// or https://
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {!currentItem.preview_images || currentItem.preview_images.length === 0 ? (
@@ -2034,13 +2326,23 @@ export default function ContentManagementPage() {
                             value={url}
                             onChange={(e) => {
                               const newUrls = [...(currentItem.preview_images || [])]
-                              newUrls[index] = e.target.value
+                              let inputValue = e.target.value
+                              
+                              // Auto-transform URLs as they're typed
+                              if (inputValue.trim()) {
+                                const extracted = extractImageUrlsFromBBCode(inputValue)
+                                if (extracted.length > 0) {
+                                  inputValue = extracted[0] // Use the first extracted URL
+                                }
+                              }
+                              
+                              newUrls[index] = inputValue
                               setCurrentItem({
                                 ...currentItem,
                                 preview_images: newUrls,
                               })
                             }}
-                            placeholder="https://example.com/preview-image.jpg"
+                            placeholder="https://example.com/preview-image.jpg or [url]...[/url] or pixhost show URL"
                             className="bg-black/60 border-gray-800 focus:border-pink-700 text-gray-300 flex-grow"
                           />
                           <Button
@@ -2076,7 +2378,7 @@ export default function ContentManagementPage() {
                             className="aspect-video rounded-lg overflow-hidden bg-gray-900 border border-gray-800"
                           >
                             <ExternalImage
-                              src={url}
+                              src={url && (url.startsWith('http://') || url.startsWith('https://')) ? url : "/placeholder.svg"}
                               alt={`Preview ${index + 1}`}
                               width={200}
                               height={120}
