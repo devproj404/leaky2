@@ -4,33 +4,34 @@
 
 @layer base {
   :root {
-    --background: 0 0% 0%;
-    --foreground: 0 0% 100%;
+    /* Better dark theme - using dark grays instead of pure black */
+    --background: 220 13% 9%;     /* #14171A - Dark blue-gray */
+    --foreground: 220 9% 95%;     /* #F1F3F4 - Off-white */
 
-    --card: 0 0% 0%;
-    --card-foreground: 0 0% 100%;
+    --card: 220 13% 11%;          /* #1A1D23 - Slightly lighter */
+    --card-foreground: 220 9% 95%;
 
-    --popover: 0 0% 0%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 220 13% 11%;       /* #1A1D23 */
+    --popover-foreground: 220 9% 95%;
 
-    --primary: 330 81% 60%;
+    --primary: 330 81% 60%;       /* Keep pink accent */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 18%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 220 13% 16%;     /* #242832 - Medium gray */
+    --secondary-foreground: 220 9% 95%;
 
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 67%;
+    --muted: 220 13% 14%;         /* #1F222A - Muted background */
+    --muted-foreground: 220 9% 70%; /* #B0B3B8 - Better contrast */
 
-    --accent: 0 0% 18%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 220 13% 16%;        /* #242832 */
+    --accent-foreground: 220 9% 95%;
 
-    --destructive: 0 62% 30%;
+    --destructive: 0 62% 50%;     /* Brighter red */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 330 81% 30%;
-    --input: 330 81% 30%;
-    --ring: 330 81% 60%;
+    --border: 220 13% 20%;        /* #2F3349 - Subtle borders */
+    --input: 220 13% 16%;         /* #242832 - Input background */
+    --ring: 330 81% 60%;          /* Pink focus ring */
 
     --radius: 0.5rem;
   }
@@ -77,16 +78,16 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
+  background: hsl(220, 13%, 14%);  /* Muted background */
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(236, 72, 153, 0.3);
+  background: hsl(220, 13%, 20%);  /* Border color */
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(236, 72, 153, 0.5);
+  background: rgba(236, 72, 153, 0.5);  /* Pink on hover */
 }
 
 /* Chart colors */

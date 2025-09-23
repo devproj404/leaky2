@@ -71,7 +71,7 @@ export default async function CategoriesPage() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-pink-500 via-purple-500 to-pink-500 text-transparent bg-clip-text">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white">
             Browse All Categories
           </h1>
           <p className="text-gray-400 text-lg max-w-2xl mx-auto">

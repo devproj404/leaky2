@@ -1,9 +1,7 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { ContentCard } from "@/components/content-card"
-import { CategoryFilters } from "@/components/category-filters"
-import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { CategoryContent } from "@/components/category-content"
+import { PopularCarousel } from "@/components/popular-carousel"
 import { createClient } from "@supabase/supabase-js"
 
 // Define static routes that should never be handled by this dynamic route
@@ -122,6 +120,50 @@ export default async function CategoryPage({
     const hasNextPage = currentPage < totalPages
     const hasPrevPage = currentPage > 1
 
+    // Get sidebar data for categories and popular content
+    const { data: popularContentData } = await supabaseAdmin
+      .from("content")
+      .select(`
+        id, title, slug, image_url, views,
+        category:categories(name, slug)
+      `)
+      .eq("is_published", true)
+      .order("views", { ascending: false })
+      .limit(6)
+
+    // Get all categories first
+    const { data: allCategories } = await supabaseAdmin
+      .from("categories")
+      .select("*")
+      .order("name")
+
+    // Get content count for each category and sort by count
+    let categoriesWithCount = []
+    if (allCategories) {
+      categoriesWithCount = await Promise.all(
+        allCategories.map(async (category) => {
+          const { count } = await supabaseAdmin
+            .from("content")
+            .select("id", { count: "exact", head: true })
+            .eq("category_id", category.id)
+            .eq("is_published", true)
+          
+          return {
+            ...category,
+            content_count: count || 0
+          }
+        })
+      )
+      
+      // Sort by content count descending and take top 6
+      categoriesWithCount.sort((a, b) => b.content_count - a.content_count)
+      categoriesWithCount = categoriesWithCount.slice(0, 6)
+    }
+
+    // Ensure arrays are never null
+    const popularContent = popularContentData || []
+    const categories = categoriesWithCount || []
+
     // Check if this is the teen packs category
     const isTeenPacks =
       categorySlug === "teen-packs" ||
@@ -129,193 +171,84 @@ export default async function CategoryPage({
       category.slug.toLowerCase().includes("teen")
 
     return (
-      <main className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <nav className="flex text-sm text-gray-400 mb-4">
-            <Link href="/" className="hover:text-pink-400 transition-colors">
+          <nav className="flex text-sm text-muted-foreground mb-4">
+            <Link href="/" className="hover:text-primary transition-colors">
               Home
             </Link>
             <span className="mx-2">/</span>
-            <span className="text-pink-400 capitalize">{category.name}</span>
+            <span className="text-primary capitalize">{category.name}</span>
           </nav>
 
-          <h1 className="text-3xl font-bold text-white mb-2 capitalize">{category.name}</h1>
-          <p className="text-gray-400">
+          <h1 className="text-3xl font-bold text-foreground mb-2 capitalize">{category.name}</h1>
+          <p className="text-muted-foreground">
             {category.description || `Browse the latest content in the ${category.name.toLowerCase()} category.`}
           </p>
         </div>
 
-        {/* Add the filter component */}
-        <CategoryFilters activeFilter={activeFilter} categorySlug={categorySlug} />
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Main content */}
+          <main className="flex-1">
+            <CategoryContent
+              category={category}
+              categorySlug={categorySlug}
+              activeFilter={activeFilter}
+              categoryContent={categoryContent}
+              isTeenPacks={isTeenPacks}
+              totalPages={totalPages}
+              currentPage={currentPage}
+              hasNextPage={hasNextPage}
+              hasPrevPage={hasPrevPage}
+              totalItems={totalItems || 0}
+            />
+          </main>
 
-        {/* Use different grid layout for teen packs */}
-        <div
-          className={`grid grid-cols-1 ${isTeenPacks ? "sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" : "sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"} mt-6`}
-        >
-          {categoryContent.length > 0 ? (
-            categoryContent.map((content) => (
-              <ContentCard
-                key={content.id}
-                category={category.name}
-                title={content.title}
-                fileSize={content.file_size}
-                imageUrl={content.image_url}
-                isPremium={content.is_premium}
-                slug={content.slug}
-                categorySlug={category.slug}
-                id={content.id}
-              />
-            ))
-          ) : (
-            <div className="col-span-full text-center py-12">
-              <p className="text-gray-400 text-lg">No content found for the selected filter.</p>
-              <Link href={`/${categorySlug}`} className="text-pink-400 hover:text-pink-300 mt-2 inline-block">
-                Clear filters
-              </Link>
-            </div>
-          )}
-        </div>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="mt-12">
-            {/* Mobile pagination info */}
-            <div className="text-center text-sm text-gray-400 mb-4 sm:hidden">
-              Page {currentPage} of {totalPages} ({totalItems} total items)
-            </div>
-            
-            <div className="flex items-center justify-between">
-              {/* Desktop pagination info */}
-              <div className="hidden sm:block text-sm text-gray-400">
-                Page {currentPage} of {totalPages} ({totalItems} total items)
+          {/* Sidebar */}
+          <aside className="w-full lg:w-80 shrink-0">
+            {/* Categories section */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold">Categories</h3>
+                <Link href="/categories" className="text-primary hover:text-primary/80 text-sm">
+                  View all categories
+                </Link>
               </div>
-              
-              {/* Mobile: Only show prev/next */}
-              <div className="flex items-center gap-2 sm:hidden mx-auto">
-                {hasPrevPage ? (
-                  <Link
-                    href={`/${categorySlug}?${new URLSearchParams({
-                      ...(activeFilter !== 'recent' && { filter: activeFilter }),
-                      page: (currentPage - 1).toString(),
-                    }).toString()}`}
-                  >
-                    <Button variant="outline" size="sm" className="flex items-center gap-2">
-                      <ChevronLeft className="w-4 h-4" />
-                      Previous
-                    </Button>
-                  </Link>
-                ) : (
-                  <Button variant="outline" size="sm" disabled className="flex items-center gap-2">
-                    <ChevronLeft className="w-4 h-4" />
-                    Previous
-                  </Button>
-                )}
-
-                {hasNextPage ? (
-                  <Link
-                    href={`/${categorySlug}?${new URLSearchParams({
-                      ...(activeFilter !== 'recent' && { filter: activeFilter }),
-                      page: (currentPage + 1).toString(),
-                    }).toString()}`}
-                  >
-                    <Button variant="outline" size="sm" className="flex items-center gap-2">
-                      Next
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </Link>
-                ) : (
-                  <Button variant="outline" size="sm" disabled className="flex items-center gap-2">
-                    Next
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                )}
-              </div>
-              
-              {/* Desktop: Full pagination */}
-              <div className="hidden sm:flex items-center gap-2">
-                {hasPrevPage ? (
-                  <Link
-                    href={`/${categorySlug}?${new URLSearchParams({
-                      ...(activeFilter !== 'recent' && { filter: activeFilter }),
-                      page: (currentPage - 1).toString(),
-                    }).toString()}`}
-                  >
-                    <Button variant="outline" size="sm" className="flex items-center gap-2">
-                      <ChevronLeft className="w-4 h-4" />
-                      Previous
-                    </Button>
-                  </Link>
-                ) : (
-                  <Button variant="outline" size="sm" disabled className="flex items-center gap-2">
-                    <ChevronLeft className="w-4 h-4" />
-                    Previous
-                  </Button>
-                )}
-
-                {/* Page Numbers */}
-                <div className="flex items-center gap-1">
-                  {(() => {
-                    const maxVisible = 5
-                    const startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2))
-                    const endPage = Math.min(totalPages, startPage + maxVisible - 1)
-                    const adjustedStartPage = Math.max(1, endPage - maxVisible + 1)
-                    
-                    return Array.from({ length: endPage - adjustedStartPage + 1 }, (_, i) => {
-                      const pageNumber = adjustedStartPage + i
-                      
-                      return (
-                        <Link
-                          key={pageNumber}
-                          href={`/${categorySlug}?${new URLSearchParams({
-                            ...(activeFilter !== 'recent' && { filter: activeFilter }),
-                            ...(pageNumber !== 1 && { page: pageNumber.toString() }),
-                          }).toString()}`}
-                        >
-                          <Button
-                            variant={currentPage === pageNumber ? "default" : "outline"}
-                            size="sm"
-                            className="w-10 h-10 p-0"
-                          >
-                            {pageNumber}
-                          </Button>
-                        </Link>
-                      )
-                    })
-                  })()}
+              <div className="bg-card border border-border rounded-lg p-4">
+                <div className="flex flex-wrap gap-2">
+                  {(categories || []).map((category) => (
+                    <Link
+                      key={category.id}
+                      href={`/${category.slug}`}
+                      className="inline-flex items-center gap-1 bg-accent hover:bg-muted text-foreground px-3 py-2 rounded-full text-sm transition-colors border border-border"
+                    >
+                      <span>{category.name}</span>
+                      <span className="text-primary text-xs">
+                        ({category.content_count})
+                      </span>
+                    </Link>
+                  ))}
                 </div>
-
-                {hasNextPage ? (
-                  <Link
-                    href={`/${categorySlug}?${new URLSearchParams({
-                      ...(activeFilter !== 'recent' && { filter: activeFilter }),
-                      page: (currentPage + 1).toString(),
-                    }).toString()}`}
-                  >
-                    <Button variant="outline" size="sm" className="flex items-center gap-2">
-                      Next
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </Link>
-                ) : (
-                  <Button variant="outline" size="sm" disabled className="flex items-center gap-2">
-                    Next
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                )}
               </div>
             </div>
-          </div>
-        )}
-      </main>
+
+            {/* Most popular section */}
+            <div className="mb-8">
+              <h3 className="text-xl font-bold mb-4">Most popular</h3>
+              <PopularCarousel items={popularContent || []} autoplayDelay={6000} />
+            </div>
+          </aside>
+        </div>
+      </div>
     )
   } catch (error) {
     console.error(`Error in CategoryPage for ${categorySlug}:`, error)
     return (
       <main className="container mx-auto px-4 py-8">
         <div className="text-center py-12">
-          <h1 className="text-3xl font-bold text-white mb-4">Something went wrong</h1>
-          <p className="text-gray-400 mb-6">We couldn't load this category. Please try again later.</p>
-          <Link href="/" className="text-pink-400 hover:text-pink-300">
+          <h1 className="text-3xl font-bold text-foreground mb-4">Something went wrong</h1>
+          <p className="text-muted-foreground mb-6">We couldn't load this category. Please try again later.</p>
+          <Link href="/" className="text-primary hover:text-primary/80">
             Return to Home
           </Link>
         </div>

@@ -25,6 +25,21 @@ const legalPages = [
     href: "/legal/legal-compliance",
     description: "Our commitment to following regulations",
   },
+  {
+    name: "Partner With Us",
+    href: "/legal/partner",
+    description: "Join our network of partners and content creators",
+  },
+  {
+    name: "Advertise With Us",
+    href: "/legal/advertise",
+    description: "Reach our engaged audience with targeted advertising",
+  },
+  {
+    name: "18 USC 2257 Compliance",
+    href: "/legal/2257",
+    description: "Age verification and record keeping compliance",
+  },
 ]
 
 export default function LegalLayout({

@@ -288,107 +288,51 @@ export function ContentTabs() {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div className="flex items-center gap-4">
-          {/* Content Type Filter */}
-          <div className="flex bg-black border border-pink-900/30 rounded-full p-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className={`rounded-full text-xs flex items-center gap-1.5 ${
-                activeTab === "premium"
-                  ? "bg-gradient-to-r from-pink-600 to-pink-500 text-white hover:from-pink-700 hover:to-pink-600 shadow-[0_0_10px_rgba(236,72,153,0.5)]"
-                  : "text-gray-400 hover:text-white"
-              }`}
-              onClick={() => handleTabChange("premium")}
-              disabled={loading}
-            >
-              <span className="text-yellow-500 text-xs mr-0.5">★</span>
-              Premium
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className={`rounded-full text-xs flex items-center gap-1.5 ${
-                activeTab === "free"
-                  ? "bg-gradient-to-r from-pink-600 to-pink-500 text-white hover:from-pink-700 hover:to-pink-600 shadow-[0_0_10px_rgba(236,72,153,0.5)]"
-                  : "text-gray-400 hover:text-white"
-              }`}
-              onClick={() => handleTabChange("free")}
-              disabled={loading}
-            >
-              <span className="text-green-500 text-xs mr-0.5">✓</span>
-              Free
-            </Button>
+      <div className="flex items-center mb-6">
+        {/* Content Type Filter - Full Width Compact */}
+        <div className="flex bg-card border border-border transform -skew-x-3 p-1 w-full max-w-lg mx-auto">
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`transform skew-x-3 text-sm flex items-center justify-center gap-2 flex-1 px-8 py-3 transition-all duration-200 ${
+              activeTab === "premium"
+                ? "bg-gradient-to-r from-white/15 via-white/10 to-white/5 backdrop-blur-sm border border-white/20 text-white hover:bg-white/15 hover:transform hover:skew-x-3 shadow-lg shadow-white/10"
+                : "text-muted-foreground hover:text-foreground hover:bg-white/5 hover:backdrop-blur-sm hover:transform hover:skew-x-3"
+            }`}
+            onClick={() => handleTabChange("premium")}
+            disabled={loading}
+          >
+            <span className={`text-sm ${activeTab === "premium" ? "text-yellow-400/80 drop-shadow-lg" : "text-yellow-500"}`}>★</span>
+            Premium
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`transform skew-x-3 text-sm flex items-center justify-center gap-2 flex-1 px-8 py-3 transition-all duration-200 ${
+              activeTab === "free"
+                ? "bg-gradient-to-r from-white/15 via-white/10 to-white/5 backdrop-blur-sm border border-white/20 text-white hover:bg-white/15 hover:transform hover:skew-x-3 shadow-lg shadow-white/10"
+                : "text-muted-foreground hover:text-foreground hover:bg-white/5 hover:backdrop-blur-sm hover:transform hover:skew-x-3"
+            }`}
+            onClick={() => handleTabChange("free")}
+            disabled={loading}
+          >
+            Free
+          </Button>
 
-            {/* Always show refresh button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="rounded-full text-xs flex items-center gap-1.5 ml-auto text-gray-400 hover:text-white"
-              onClick={refreshContent}
-              disabled={loading}
-            >
-              <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
-          </div>
+          {/* Always show refresh button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="transform skew-x-3 text-sm flex items-center justify-center gap-2 flex-1 px-8 py-3 text-muted-foreground hover:text-foreground hover:bg-white/5 hover:backdrop-blur-sm hover:transform hover:skew-x-3 transition-all duration-200"
+            onClick={refreshContent}
+            disabled={loading}
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
         </div>
-
-        {/* Pagination Controls */}
-        {totalPages > 1 && !offlineMode && (
-          <div className="flex items-center bg-black border border-pink-900/30 rounded-full p-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-8 h-8 p-0 text-gray-400 hover:text-white"
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1 || loading}
-            >
-              <ChevronLeft className="w-4 h-4" />
-              <span className="sr-only">Previous</span>
-            </Button>
-
-            <div className="hidden sm:flex items-center">
-              {/* Pagination items */}
-              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                const pageNumber = i + 1
-                return (
-                  <Button
-                    key={`page-${pageNumber}`}
-                    variant="ghost"
-                    size="sm"
-                    className={`w-8 h-8 p-0 ${
-                      currentPage === pageNumber ? "bg-pink-600 text-white" : "text-gray-400 hover:text-white"
-                    }`}
-                    onClick={() => handlePageChange(pageNumber)}
-                    disabled={loading}
-                  >
-                    {pageNumber}
-                  </Button>
-                )
-              })}
-            </div>
-
-            <div className="sm:hidden flex items-center">
-              <span className="text-xs text-gray-400 px-2">
-                {currentPage} / {totalPages}
-              </span>
-            </div>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-8 h-8 p-0 text-gray-400 hover:text-white"
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages || loading}
-            >
-              <ChevronRight className="w-4 h-4" />
-              <span className="sr-only">Next</span>
-            </Button>
-          </div>
-        )}
       </div>
+
 
       {error && !loading && !offlineMode && (
         <div className="bg-red-900/20 border border-red-800 text-red-200 p-4 rounded-lg mb-6">
@@ -405,7 +349,7 @@ export function ContentTabs() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-4">
         {content.map((item, index) => (
           <ContentCard
             key={item.id}
@@ -448,32 +392,59 @@ export function ContentTabs() {
         </div>
       )}
 
-      {/* Bottom pagination for mobile */}
+      {/* Bottom pagination for all screens */}
       {totalPages > 1 && !loading && !offlineMode && (
-        <div className="mt-8 flex justify-center sm:hidden">
-          <div className="flex items-center bg-black border border-pink-900/30 rounded-full p-1">
+        <div className="mt-8 flex justify-center">
+          <div className="flex items-center bg-card border border-border rounded-full p-1">
             <Button
               variant="ghost"
               size="sm"
-              className="w-8 h-8 p-0 text-gray-400 hover:text-white"
+              className="w-8 h-8 p-0 text-muted-foreground hover:text-foreground hover:bg-accent"
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
             >
               <ChevronLeft className="w-4 h-4" />
+              <span className="sr-only">Previous</span>
             </Button>
 
-            <span className="text-xs text-gray-400 px-2">
-              Page {currentPage} of {totalPages}
-            </span>
+            <div className="hidden sm:flex items-center">
+              {/* Pagination items */}
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                const pageNumber = i + 1
+                return (
+                  <Button
+                    key={`page-${pageNumber}`}
+                    variant="ghost"
+                    size="sm"
+                    className={`w-8 h-8 p-0 transition-all duration-200 ${
+                      currentPage === pageNumber 
+                        ? "bg-primary text-primary-foreground" 
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                    }`}
+                    onClick={() => handlePageChange(pageNumber)}
+                    disabled={loading}
+                  >
+                    {pageNumber}
+                  </Button>
+                )
+              })}
+            </div>
+
+            <div className="sm:hidden flex items-center">
+              <span className="text-xs text-muted-foreground px-2">
+                {currentPage} / {totalPages}
+              </span>
+            </div>
 
             <Button
               variant="ghost"
               size="sm"
-              className="w-8 h-8 p-0 text-gray-400 hover:text-white"
+              className="w-8 h-8 p-0 text-muted-foreground hover:text-foreground hover:bg-accent"
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
             >
               <ChevronRight className="w-4 h-4" />
+              <span className="sr-only">Next</span>
             </Button>
           </div>
         </div>

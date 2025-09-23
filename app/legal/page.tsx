@@ -34,6 +34,21 @@ export default function LegalIndex() {
           <h2 className="text-xl font-semibold text-pink-400 mb-2">Legal Compliance</h2>
           <p className="text-gray-400 text-sm">Our commitment to following regulations</p>
         </Link>
+        
+        <Link href="/legal/partner" className="block p-6 bg-gray-900/50 border border-gray-800 rounded-lg hover:border-pink-800/30 transition-colors">
+          <h2 className="text-xl font-semibold text-pink-400 mb-2">Partner With Us</h2>
+          <p className="text-gray-400 text-sm">Join our network of partners and content creators</p>
+        </Link>
+        
+        <Link href="/legal/advertise" className="block p-6 bg-gray-900/50 border border-gray-800 rounded-lg hover:border-pink-800/30 transition-colors">
+          <h2 className="text-xl font-semibold text-pink-400 mb-2">Advertise With Us</h2>
+          <p className="text-gray-400 text-sm">Reach our engaged audience with targeted advertising</p>
+        </Link>
+        
+        <Link href="/legal/2257" className="block p-6 bg-gray-900/50 border border-gray-800 rounded-lg hover:border-pink-800/30 transition-colors">
+          <h2 className="text-xl font-semibold text-pink-400 mb-2">18 USC 2257 Compliance</h2>
+          <p className="text-gray-400 text-sm">Age verification and record keeping compliance</p>
+        </Link>
       </div>
       
       <div className="mt-10 pt-6 border-t border-gray-800">
