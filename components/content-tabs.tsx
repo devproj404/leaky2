@@ -13,7 +13,7 @@ type TabData = {
   loaded: boolean
 }
 
-export function ContentTabs() {
+export function ContentTabs({ showTitle = false }: { showTitle?: boolean }) {
   const [activeTab, setActiveTab] = useState<"premium" | "free">("premium")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -288,9 +288,17 @@ export function ContentTabs() {
         </div>
       )}
 
-      <div className="flex items-center mb-6">
+      <div className="mb-6">
+        {/* Browse Content Title */}
+        {showTitle && (
+          <h2 className="text-xl font-bold text-white mb-4">
+            Browse Content
+          </h2>
+        )}
+        
         {/* Content Type Filter - Full Width Compact */}
-        <div className="flex bg-card border border-border transform -skew-x-3 p-1 w-full max-w-lg mx-auto">
+        <div className="flex justify-center">
+          <div className="flex bg-card border border-border transform -skew-x-3 p-1 w-full max-w-lg">
           <Button
             variant="ghost"
             size="sm"
@@ -330,6 +338,7 @@ export function ContentTabs() {
             <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </Button>
+          </div>
         </div>
       </div>
 

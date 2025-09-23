@@ -234,7 +234,7 @@ export function ContentCard({
             )}
 
             <div className="absolute bottom-0 left-0 right-0 p-4 z-20">
-              <h3 className="text-sm sm:text-lg font-bold text-white mb-1 group-hover:text-pink-300 transition-colors line-clamp-2">
+              <h3 className="text-sm sm:text-lg font-bold text-white mb-1 line-clamp-2">
                 {title}
               </h3>
             </div>

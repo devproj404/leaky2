@@ -37,10 +37,7 @@ export default function Home() {
         
         {/* Content Tabs - Full width layout */}
         <section aria-labelledby="content-section">
-          <h2 id="content-section" className="text-xl font-bold mb-6">
-            Browse Content
-          </h2>
-          <ContentTabs />
+          <ContentTabs showTitle={true} />
         </section>
         
         {/* Bottom Ad Slot */}

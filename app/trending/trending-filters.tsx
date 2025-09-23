@@ -33,46 +33,45 @@ export function TrendingFilters({ initialType }: TrendingFiltersProps) {
   return (
     <div className="mb-8 space-y-4">
       <div className="flex flex-wrap items-center gap-4">
-        <div className="flex bg-black border border-pink-900/30 rounded-full p-1">
+        <div className="flex bg-card border border-border transform -skew-x-3 p-1 w-full max-w-lg mx-auto">
           <Button
             variant="ghost"
             size="sm"
-            className={`rounded-full text-xs flex items-center gap-1.5 ${
+            className={`transform skew-x-3 text-sm flex items-center justify-center gap-2 flex-1 px-8 py-3 transition-all duration-200 ${
               contentType === "all"
-                ? "bg-gradient-to-r from-pink-600 to-pink-500 text-white hover:from-pink-700 hover:to-pink-600 shadow-[0_0_10px_rgba(236,72,153,0.5)]"
-                : "text-gray-400 hover:text-white"
+                ? "bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/15 hover:transform hover:skew-x-3 shadow-lg shadow-white/10"
+                : "text-muted-foreground hover:text-foreground hover:bg-white/5 hover:backdrop-blur-sm hover:transform hover:skew-x-3"
             }`}
             onClick={() => updateFilters("all")}
             disabled={isPending}
           >
-            <span className="text-xs mr-0.5">All</span>
+            All
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            className={`rounded-full text-xs flex items-center gap-1.5 ${
+            className={`transform skew-x-3 text-sm flex items-center justify-center gap-2 flex-1 px-8 py-3 transition-all duration-200 ${
               contentType === "premium"
-                ? "bg-gradient-to-r from-pink-600 to-pink-500 text-white hover:from-pink-700 hover:to-pink-600 shadow-[0_0_10px_rgba(236,72,153,0.5)]"
-                : "text-gray-400 hover:text-white"
+                ? "bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/15 hover:transform hover:skew-x-3 shadow-lg shadow-white/10"
+                : "text-muted-foreground hover:text-foreground hover:bg-white/5 hover:backdrop-blur-sm hover:transform hover:skew-x-3"
             }`}
             onClick={() => updateFilters("premium")}
             disabled={isPending}
           >
-            <Star className="h-3 w-3 text-yellow-500" />
+            <span className={`text-sm ${contentType === "premium" ? "text-yellow-400/80 drop-shadow-lg" : "text-yellow-500"}`}>★</span>
             Premium
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            className={`rounded-full text-xs flex items-center gap-1.5 ${
+            className={`transform skew-x-3 text-sm flex items-center justify-center gap-2 flex-1 px-8 py-3 transition-all duration-200 ${
               contentType === "free"
-                ? "bg-gradient-to-r from-pink-600 to-pink-500 text-white hover:from-pink-700 hover:to-pink-600 shadow-[0_0_10px_rgba(236,72,153,0.5)]"
-                : "text-gray-400 hover:text-white"
+                ? "bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/15 hover:transform hover:skew-x-3 shadow-lg shadow-white/10"
+                : "text-muted-foreground hover:text-foreground hover:bg-white/5 hover:backdrop-blur-sm hover:transform hover:skew-x-3"
             }`}
             onClick={() => updateFilters("free")}
             disabled={isPending}
           >
-            <Check className="h-3 w-3 text-green-500" />
             Free
           </Button>
         </div>

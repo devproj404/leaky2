@@ -63,8 +63,8 @@ export default function TrendingPage({
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-pink-600">
+      <div className="mb-8 text-center">
+        <h1 className="text-3xl font-bold mb-2 text-white">
           Trending Content
         </h1>
         <p className="text-muted-foreground">Discover the most popular and trending content right now</p>
