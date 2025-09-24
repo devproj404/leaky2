@@ -136,10 +136,10 @@ export function Navbar() {
                     <div className="flex items-center justify-between p-4 border-b border-border">
                       <Link
                         href="/"
-                        className="flex items-center gap-2 font-bold text-xl text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-pink-600"
+                        className="flex items-center font-bold text-xl"
                         onClick={() => setIsOpen(false)}
                       >
-                        X
+                        <span className="text-white">LEAKY</span><span className="text-pink-400">BABES</span>
                       </Link>
                       <Button
                         variant="ghost"
@@ -360,9 +360,9 @@ export function Navbar() {
 
               <Link
                 href="/"
-                className="flex items-center gap-2 font-bold text-xl text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-pink-600"
+                className="flex items-center font-bold text-xl"
               >
-                X
+                <span className="text-white">LEAKY</span><span className="text-pink-400">BABES</span>
               </Link>
 
               {/* Navigation beside logo */}

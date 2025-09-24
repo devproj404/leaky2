@@ -12,9 +12,9 @@ export function Footer() {
           <div className="flex items-center">
             <Link
               href="/"
-              className="flex items-center gap-2 font-bold text-2xl text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-pink-600"
+              className="flex items-center font-bold text-2xl"
             >
-              X
+              <span className="text-white">LEAKY</span><span className="text-pink-400">BABES</span>
             </Link>
           </div>
           
